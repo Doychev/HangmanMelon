@@ -1,0 +1,15 @@
+Development Notes 
+Author: Martin Doychev
+
+09/07/2015 18:23
+I decided to use BaasBox (http://baasbox.com) for my DB, as it has rather easy integration with Android and is easily maintainable. 
+During the first days of development I had some issues with it, but I think now everything is sorted out and I shouldn't have any problems.
+
+09/07/2015 18:25
+The current state of the project is not commented at all, but I'll fix this at some point in time.
+
+09/07/2015 18:26
+Today I started implementing also the ingame logic. I decided that if the word that has to be guessed contains the first and/or the last letters also on the inside of it, the user still has to guess them in order to see them.
+
+09/07/2015
+Other difficulties I had during the first days of development were related to the asynchrous calls to the DB, but I think I figured it out in a good way.
