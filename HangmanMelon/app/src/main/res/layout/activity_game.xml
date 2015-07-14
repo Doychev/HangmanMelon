@@ -19,7 +19,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Try a letter!"
-        android:id="@+id/button"
+        android:id="@+id/letterButton"
         android:layout_marginBottom="141dp"
         android:layout_alignParentBottom="true"
         android:layout_toRightOf="@+id/textView"
@@ -29,27 +29,53 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Try to guess!"
-        android:id="@+id/button2"
+        android:id="@+id/guessButton"
         android:layout_marginBottom="65dp"
         android:layout_alignParentBottom="true"
-        android:layout_alignRight="@+id/button"
-        android:layout_alignEnd="@+id/button" />
+        android:layout_alignRight="@+id/letterButton"
+        android:layout_alignEnd="@+id/letterButton" />
 
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/editText"
-        android:layout_alignBottom="@+id/button"
-        android:layout_toLeftOf="@+id/button2"
+        android:id="@+id/letterInput"
+        android:layout_alignBottom="@+id/letterButton"
+        android:layout_toLeftOf="@+id/guessButton"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
 
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/editText2"
-        android:layout_toLeftOf="@+id/button2"
-        android:layout_alignBottom="@+id/button2"
+        android:id="@+id/guessInput"
+        android:layout_toLeftOf="@+id/guessButton"
+        android:layout_alignBottom="@+id/guessButton"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:id="@+id/gameWordView"
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@+id/letterButton"
+        android:layout_toStartOf="@+id/letterButton" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:id="@+id/wordDescriptionView"
+        android:layout_above="@+id/letterButton"
+        android:layout_toLeftOf="@+id/letterButton"
+        android:layout_toStartOf="@+id/letterButton" />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/errorsImageView"
+        android:src="@drawable/errors0"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/gameWordView" />
 </RelativeLayout>

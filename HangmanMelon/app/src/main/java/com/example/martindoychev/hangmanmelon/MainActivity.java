@@ -1,17 +1,15 @@
 package com.example.martindoychev.hangmanmelon;
 
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.Signature;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import com.baasbox.android.BaasBox;
+import com.baasbox.android.BaasDocument;
+import com.baasbox.android.BaasException;
 import com.baasbox.android.BaasHandler;
 import com.baasbox.android.BaasResult;
 import com.baasbox.android.BaasUser;
@@ -25,15 +23,14 @@ import com.facebook.appevents.AppEventsLogger;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity {
 
-//    private RequestToken mSignupOrLogin;
     private CallbackManager facebookCallbackManager;
+
+    private BaasDocument fbUser;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -45,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        //this code is used to generate the keyhash used for facebook integration
 //        try {
 //            PackageInfo info = getPackageManager().getPackageInfo(
 //                    "com.example.martindoychev.hangmanmelon",
@@ -64,12 +62,23 @@ public class MainActivity extends AppCompatActivity {
         facebookCallbackManager = CallbackManager.Factory.create();
         setContentView(R.layout.activity_main);
 
+        BaasBox.builder(this).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN)
+                .setApiDomain("192.168.1.105")
+                .setPort(9000)
+                .setAppCode("1234567890")
+                .init();
+
+        //if logged in - redirect to the game
+        if (AccessToken.getCurrentAccessToken()!=null) {
+            signInBaasBox();
+        }
+
         LoginButton loginButton = (LoginButton) findViewById(R.id.login_button);
         loginButton.registerCallback(facebookCallbackManager, new FacebookCallback<LoginResult>() {
             @Override
             public void onSuccess(LoginResult loginResult) {
                 Log.i("facebook-login", "success");
-                registerUser(loginResult);
+                signInBaasBox();
             }
 
             @Override
@@ -82,31 +91,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.e("facebook-login", e.getMessage());
             }
         });
-    }
 
-    private void registerUser(LoginResult loginResult) {
-
-        for (String s : loginResult.getAccessToken().getPermissions()) {
-            Log.i("facebook-permissions", s);
-        }
-
-        Log.i("facebook-userid", AccessToken.getCurrentAccessToken().getUserId());
-        Log.i("facebook-userprofile", Profile.getCurrentProfile().getName());
-
-        BaasBox.builder(this).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN)
-                .setApiDomain("192.168.1.105")
-                .setPort(9000)
-                .setAppCode("1234567890")
-                .init();
-
-        String mUsername = "admin", mPassword="admin";
-        boolean newUser = false;
-        signupWithBaasBox(newUser, mUsername, mPassword);
-
-        Intent intent = new Intent(this, GameActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
-        finish();
     }
 
     @Override
@@ -125,43 +110,88 @@ public class MainActivity extends AppCompatActivity {
         AppEventsLogger.deactivateApp(this);
     }
 
-    private void signupWithBaasBox(boolean newUser, String mUsername, String mPassword){
-        BaasUser user = BaasUser.withUserName(mUsername);
-        user.setPassword(mPassword);
-        if (newUser) {
-            user.signup(onComplete);
-        } else {
-            user.login(onComplete);
-        }
-    }
-
-    private final BaasHandler<BaasUser> onComplete =
-            new BaasHandler<BaasUser>() {
-                @Override
-                public void handle(BaasResult<BaasUser> result) {
-
-//                    mSignupOrLogin = null;
-                    if (result.isFailed()){
-                        Log.d("ERROR","ERROR",result.error());
-                    }
+    private void signInBaasBox(){
+        BaasUser user = BaasUser.withUserName("admin");
+        user.setPassword("admin");
+        user.login(new BaasHandler<BaasUser>() {
+            @Override
+            public void handle(BaasResult<BaasUser> result) {
+                if (result.isFailed()){
+                    Log.e("ERROR", "ERROR", result.error());
+                } else {
                     completeLogin(result.isSuccess());
                 }
-            };
+            }
+        });
+    }
 
-    private void completeLogin(boolean success){
+    private void completeLogin(boolean success) {
         //showProgress(false);
 //        mSignupOrLogin = null;
         if (success) {
-//            Intent intent = new Intent(this,NoteListActivity.class);
-//            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//            startActivity(intent);
-//            finish();
             Log.i("baasboxlogin", "success");
+            BaasDocument.fetchAll("facebookusers", new BaasHandler<List<BaasDocument>>() {
+                @Override
+                public void handle(BaasResult<List<BaasDocument>> res) {
+                    if (res.isSuccess()) {
+                        Log.i("baasboxusers", "success");
+                        try {
+                            boolean userExists = false;
+                            for (BaasDocument user : res.get()) {
+                                if (user.getString("uid").equals(Profile.getCurrentProfile().getId())) {
+                                    fbUser = user;
+                                    userExists = true;
+                                    break;
+                                }
+                            }
+                            if (userExists) {
+                                openGameActivity();
+                            } else {
+                                saveFbUser();
+                            }
+                        } catch (BaasException e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        Log.e("baasboxusers", "Error", res.error());
+                    }
+                }
+            });
         } else {
-            Log.i("baasboxlogin", "failed");
-//            mPasswordView.setError(getString(R.string.error_incorrect_password));
-//            mPasswordView.requestFocus();
+            Log.e("baasboxlogin", "failed");
+            throw new RuntimeException();
         }
+    }
+
+    private void saveFbUser() {
+        BaasDocument user = new BaasDocument("facebookusers");
+        user.put("uid", Profile.getCurrentProfile().getId());
+        user.put("username", Profile.getCurrentProfile().getName());
+        user.put("history", "");
+        user.save(new BaasHandler<BaasDocument>() {
+            @Override
+            public void handle(BaasResult<BaasDocument> doc) {
+                if (doc.isSuccess()) {
+                    try {
+                        Log.i("baasboxsaveuser", "success");
+                        fbUser = doc.get();
+                        openGameActivity();
+                    } catch (BaasException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    Log.e("baasboxsaveuser", "fail");
+                }
+            }
+        });
+    }
+
+    private void openGameActivity() {
+        Intent intent = new Intent(this, GameActivity.class);
+        intent.putExtra("fbUser", fbUser);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 
     @Override

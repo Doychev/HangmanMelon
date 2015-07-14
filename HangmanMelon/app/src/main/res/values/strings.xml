@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">HangmanMelon</string>
 
-    <string name="hello_world">Hello world!</string>
+    <string name="log_in_to_play">Please, log in with your Facebook account to play!</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_game">GameActivity</string>
     <string name="facebook_app_id">1632951753652431</string>

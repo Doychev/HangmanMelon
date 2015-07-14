@@ -3,14 +3,23 @@ package com.example.martindoychev.hangmanmelon;
 import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
 
+import com.baasbox.android.BaasBox;
 import com.baasbox.android.BaasDocument;
 import com.baasbox.android.BaasHandler;
 import com.baasbox.android.BaasQuery;
 import com.baasbox.android.BaasResult;
+import com.baasbox.android.json.JsonObject;
+import com.baasbox.android.net.HttpRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,44 +35,31 @@ public class GameActivity extends AppCompatActivity {
     private int errorCount = 0;
 
     private ProgressDialog loadingDialog;
-
-    private final BaasHandler<List<BaasDocument>> getWordsHandler = new BaasHandler<List<BaasDocument>>() {
-        @Override
-        public void handle(BaasResult<List<BaasDocument>> res) {
-            if (res.isSuccess()) {
-                Log.d("Baasboxdocs", "success");
-                wordsCollection = res.value();
-                prepareGame();
-//                for (BaasDocument doc : res.value()) {
-//                    Log.d("Baasboxdocs", "Doc: " + doc);
-//                }
-            } else {
-                Log.e("Baasboxdocs", "Error", res.error());
-            }
-        }
-    };
-
-//        BaasDocument note = new BaasDocument("words");
-//        note.put("category","Cities");
-//        note.put("word","Sofia");
-//        note.save(saveWordsHandler);
-       private final BaasHandler<BaasDocument> saveWordsHandler =
-            new BaasHandler<BaasDocument>() {
-                @Override
-                public void handle(BaasResult<BaasDocument> doc) {
-                    if (doc.isSuccess()) {
-                        Log.d("Baasboxdocs", "success");
-                    } else {
-                        Log.d("Baasboxdocs", "fail");
-                    }
-                }
-            };
+    private BaasDocument fbUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
+        fbUser = getIntent().getParcelableExtra("fbUser");
 
+        final EditText letterInput = (EditText) findViewById(R.id.letterInput);
+        EditText guessInput = (EditText) findViewById(R.id.guessInput);
+
+        Button letterButton = (Button) findViewById(R.id.letterButton);
+        Button guessButton = (Button) findViewById(R.id.guessButton);
+
+
+        letterButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                processLetter(letterInput.getText().toString());
+                letterInput.setText("");
+            }
+        });
+
+        //uncomment the line below to populate the db with the collection words and the documents for it
+        populateDB();
         prepareGame();
     }
 
@@ -86,27 +82,36 @@ public class GameActivity extends AppCompatActivity {
 //            gameWord = "SOFIA";
 
             String word = generateVisibleGameWord();
+            TextView gameWordView = (TextView) findViewById(R.id.gameWordView);
+            gameWordView.setText(word);
+
+            TextView wordDescriptionView = (TextView) findViewById(R.id.wordDescriptionView);
+            wordDescriptionView.setText(wordsCollection.get(randomWordId).getString("description"));
 
 //            processLetter("I");
 //            word = generateVisibleGameWord();
 
-             Log.d("prepareGame", "dummy");
+            Log.d("prepareGame", "dummy");
         }
         loadingDialog.dismiss();
     }
 
     private String generateVisibleGameWord() {
         StringBuilder visible = new StringBuilder();
-        visible.append(gameWord.charAt(0));
-        for (int i = 1; i < gameWord.length()-1; i++) {
-            char current = gameWord.charAt(i);
-            if (current >= 'A' && current <= 'Z' && unusedAlphabet.contains(current)) {
-                visible.append(" _ ");
-            } else {
-                visible.append(current);
+        String[] gameWords = gameWord.split(" ");
+        for (String currentWord : gameWords) {
+            visible.append(currentWord.charAt(0));
+            for (int i = 1; i < currentWord.length()-1; i++) {
+                char current = currentWord.charAt(i);
+                if (current >= 'A' && current <= 'Z' && unusedAlphabet.contains(current)) {
+                    visible.append(" _ ");
+                } else {
+                    visible.append(current);
+                }
             }
+            visible.append(currentWord.charAt(currentWord.length() - 1) + "  ");
         }
-        visible.append(gameWord.charAt(gameWord.length() - 1));
+        visible.deleteCharAt(visible.length()-1);
         return visible.toString();
     }
 
@@ -124,8 +129,25 @@ public class GameActivity extends AppCompatActivity {
         BaasDocument.fetchAll("words", filter, getWordsHandler);
     }
 
+    private final BaasHandler<List<BaasDocument>> getWordsHandler = new BaasHandler<List<BaasDocument>>() {
+        @Override
+        public void handle(BaasResult<List<BaasDocument>> res) {
+            if (res.isSuccess()) {
+                Log.d("Baasboxdocs", "success");
+                wordsCollection = res.value();
+                prepareGame();
+//                for (BaasDocument doc : res.value()) {
+//                    Log.d("Baasboxdocs", "Doc: " + doc);
+//                }
+            } else {
+                Log.e("Baasboxdocs", "Error", res.error());
+            }
+        }
+    };
+
     private void processLetter(String inputStr) {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
+        inputStr = inputStr.toUpperCase();
         char inputChar = inputStr.charAt(0);
         if (inputStr.length() > 1) {
             //TODO: prepare error message, try again - 1 char
@@ -134,14 +156,20 @@ public class GameActivity extends AppCompatActivity {
         } else {
             int index = gameWord.indexOf(inputChar, 1);
             if (index > -1 && index < gameWord.length()-1) {
-                unusedAlphabet.remove(unusedAlphabet.indexOf('I'));
+                unusedAlphabet.remove(unusedAlphabet.indexOf(inputChar));
                 usedAlphabet.add(inputChar);
                 String word = generateVisibleGameWord();
+                TextView gameWordView = (TextView) findViewById(R.id.gameWordView);
+                gameWordView.setText(word);
                 if (!word.contains(" _ ")) {
                     endGame(true);
                 }
             } else {
                 ++errorCount;
+                ImageView errorsImageView = (ImageView) findViewById(R.id.errorsImageView);
+                String idStr = "errors" + errorCount;
+                int id = getResources().getIdentifier("com.example.martindoychev.hangmanmelon:drawable/" + idStr, null, null);
+                errorsImageView.setImageResource(id);
                 if (errorCount >= MAX_ERROR_COUNT) {
                     endGame(false);
                 } else {
@@ -187,5 +215,86 @@ public class GameActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void populateDB() {
+        List<BaasDocument> words = new ArrayList<BaasDocument>();
+
+        BaasDocument word = new BaasDocument("words");
+        word.put("category", "Cities");
+        word.put("word", "Sofia");
+        word.put("description", "City in Bulgaria");
+        word.put("wid", "0");
+        words.add(word);
+
+        BaasDocument word1 = new BaasDocument("words");
+        word1.put("category", "Cities");
+        word1.put("word", "Milan");
+        word1.put("description", "City in Italy");
+        word1.put("wid", "1");
+        words.add(word1);
+
+        BaasDocument word2 = new BaasDocument("words");
+        word2.put("category", "Cities");
+        word2.put("word", "L'Aquila");
+        word2.put("description", "City in Italy");
+        word2.put("wid", "2");
+        words.add(word2);
+
+        BaasDocument word3 = new BaasDocument("words");
+        word3.put("category", "Animals");
+        word3.put("word", "Tiger");
+        word3.put("description", "Animal, Cats family");
+        word3.put("wid", "0");
+        words.add(word3);
+
+        BaasDocument word4 = new BaasDocument("words");
+        word4.put("category", "Animals");
+        word4.put("word", "Snake");
+        word4.put("description", "Animal, Reptile");
+        word4.put("wid", "1");
+        words.add(word4);
+
+        BaasDocument word5 = new BaasDocument("words");
+        word5.put("category", "Animals");
+        word5.put("word", "Big Eagle");
+        word5.put("description", "Animal, Bird");
+        word5.put("wid", "2");
+        words.add(word5);
+
+        BaasBox client = BaasBox.getDefault();
+        String collectionName = "words";
+        client.rest(HttpRequest.POST, "admin/collection/" + collectionName, null, true,
+                new BaasHandler<JsonObject>() {
+                    @Override
+                    public void handle(BaasResult<JsonObject> res) {
+                        if (res.isSuccess()) {
+                            Log.d("LOG", "Collection created");
+                        } else {
+                            Log.e("LOG", "Error", res.error());
+                        }
+                    }
+                });
+
+        saveWords(words, 0);
+    }
+
+    private void saveWords(final List<BaasDocument> words, final int index) {
+        BaasHandler<BaasDocument> saveWordsHandler =
+                new BaasHandler<BaasDocument>() {
+                    @Override
+                    public void handle(BaasResult<BaasDocument> doc) {
+                        if (doc.isSuccess()) {
+                            saveWords(words, index + 1);
+                            Log.d("Baasboxdocs", "success");
+                        } else {
+                            Log.d("Baasboxdocs", "fail");
+                        }
+                    }
+                };
+
+        if (index < words.size()) {
+            words.get(index).save(saveWordsHandler);
+        }
     }
 }

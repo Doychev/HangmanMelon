@@ -17,3 +17,6 @@ Other difficulties I had during the first days of development were related to th
 12/07/2015 14:42
 Over the last 2 days I have been working on the Facebook integration. I had issues with the key hashes of the application and the communication between my application and Facebook due to a strange issue, but I solved it. I posted some of my ideas here: http://stackoverflow.com/questions/23674131/android-facebook-integration-invalid-key-hash 
 I also worked a little bit on the UI, just for having a broad idea of how the application will look.
+
+14/07/2015 16:37
+I had some problems with the BaasBox users integration, but I worked them out. Now an administrator user is used to access the DB and all Facebook users are stored in the DB. Those documents will be used for the statistics storage as well. I created a small script which can be used to re-populate the words collection if necessary. I started improving the game logic in general, it is close to done. I also added the pictures for the different error counts during the game. They are in only one size, which may cause bad visualization on different devices, but I have fitted it for my OnePlus One device (running "OxygenOS", based on Android Lollipop; resolution 1080x1920 pixels).
