@@ -26,6 +26,10 @@ import com.facebook.login.widget.LoginButton;
 import java.util.List;
 
 
+/*TODO: check if any progress dialog changes are needed; probably we have to start it
+at the beginning of the login process and end it if an error occurs or at the end
+ */
+
 public class MainActivity extends AppCompatActivity {
 
     private CallbackManager facebookCallbackManager;
@@ -35,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        //handle the callback when facebook login is completed
         facebookCallbackManager.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -62,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
         facebookCallbackManager = CallbackManager.Factory.create();
         setContentView(R.layout.activity_main);
 
+        //prepare the BaasBox connection
         BaasBox.builder(this).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN)
                 .setApiDomain("192.168.1.105")
                 .setPort(9000)
@@ -73,11 +79,13 @@ public class MainActivity extends AppCompatActivity {
             signInBaasBox();
         }
 
+        //register the callback on the Facebook loginButton
         LoginButton loginButton = (LoginButton) findViewById(R.id.login_button);
         loginButton.registerCallback(facebookCallbackManager, new FacebookCallback<LoginResult>() {
             @Override
             public void onSuccess(LoginResult loginResult) {
                 Log.i("facebook-login", "success");
+                //if Facebook login is successful, proceed with BaasBox login
                 signInBaasBox();
             }
 
@@ -89,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(FacebookException e) {
                 Log.e("facebook-login", e.getMessage());
+                //TODO: check if proper error handling is required here
             }
         });
 
@@ -110,6 +119,8 @@ public class MainActivity extends AppCompatActivity {
         AppEventsLogger.deactivateApp(this);
     }
 
+    //login to BaasBox with an administrator user; the reason for this is that
+    //the users with role "registered" don't have permission to access any data in the DB
     private void signInBaasBox(){
         BaasUser user = BaasUser.withUserName("admin");
         user.setPassword("admin");
@@ -118,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
             public void handle(BaasResult<BaasUser> result) {
                 if (result.isFailed()){
                     Log.e("ERROR", "ERROR", result.error());
+                    //TODO: check if proper error handling is required here
                 } else {
                     completeLogin(result.isSuccess());
                 }
@@ -126,10 +138,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void completeLogin(boolean success) {
-        //showProgress(false);
-//        mSignupOrLogin = null;
         if (success) {
             Log.i("baasboxlogin", "success");
+            //fetch all users and check if the user is already registered; if he isn't - register him and continue; otherwise - go straight to the game
             BaasDocument.fetchAll("facebookusers", new BaasHandler<List<BaasDocument>>() {
                 @Override
                 public void handle(BaasResult<List<BaasDocument>> res) {
@@ -151,18 +162,22 @@ public class MainActivity extends AppCompatActivity {
                             }
                         } catch (BaasException e) {
                             e.printStackTrace();
+                            //TODO: check if proper error handling is required here
                         }
                     } else {
                         Log.e("baasboxusers", "Error", res.error());
+                        //TODO: check if proper error handling is required here
                     }
                 }
             });
         } else {
             Log.e("baasboxlogin", "failed");
             throw new RuntimeException();
+            //TODO: check if proper error handling is required here
         }
     }
 
+    //store the user's name and id in the "facebookusers" collection; when completed, continue to the game
     private void saveFbUser() {
         BaasDocument user = new BaasDocument("facebookusers");
         user.put("uid", Profile.getCurrentProfile().getId());
@@ -178,14 +193,17 @@ public class MainActivity extends AppCompatActivity {
                         openGameActivity();
                     } catch (BaasException e) {
                         e.printStackTrace();
+                        //TODO: check if proper error handling is required here
                     }
                 } else {
                     Log.e("baasboxsaveuser", "fail");
+                    //TODO: check if proper error handling is required here
                 }
             }
         });
     }
 
+    //start the GameActivity, passing the user details in the intent
     private void openGameActivity() {
         Intent intent = new Intent(this, GameActivity.class);
         intent.putExtra("fbUser", fbUser);

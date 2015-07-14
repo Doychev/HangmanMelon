@@ -29,13 +29,13 @@ public class GameActivity extends AppCompatActivity {
 
     private static final int MAX_ERROR_COUNT = 5;
 
-    private List<BaasDocument> wordsCollection;
-    private String gameWord;
-    private List<Character> unusedAlphabet, usedAlphabet;
-    private int errorCount = 0;
+    private List<BaasDocument> wordsCollection; //words from the db
+    private String gameWord; //the random word, selected for the current game
+    private List<Character> unusedAlphabet, usedAlphabet; //the used and unused letters from the alphabet
+    private int errorCount = 0; //wrong guesses made by the user
 
     private ProgressDialog loadingDialog;
-    private BaasDocument fbUser;
+    private BaasDocument fbUser; //user details
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +44,7 @@ public class GameActivity extends AppCompatActivity {
         fbUser = getIntent().getParcelableExtra("fbUser");
 
         final EditText letterInput = (EditText) findViewById(R.id.letterInput);
-        EditText guessInput = (EditText) findViewById(R.id.guessInput);
+        final EditText guessInput = (EditText) findViewById(R.id.guessInput);
 
         Button letterButton = (Button) findViewById(R.id.letterButton);
         Button guessButton = (Button) findViewById(R.id.guessButton);
@@ -58,13 +58,23 @@ public class GameActivity extends AppCompatActivity {
             }
         });
 
+        guessButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                processGuess(guessInput.getText().toString());
+                guessInput.setText("");
+            }
+        });
+
         //uncomment the line below to populate the db with the collection words and the documents for it
-        populateDB();
+        //populateDB();
         prepareGame();
     }
 
     private void prepareGame() {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
+
+        //if the collection is not yet fetched, fetch it; otherwise - proceed with game initiation
         if (wordsCollection == null || wordsCollection.isEmpty()) {
             populateRandomCategory();
         } else {
@@ -79,8 +89,8 @@ public class GameActivity extends AppCompatActivity {
             int randomWordId = Math.abs(random.nextInt(wordsCollection.size()));
             gameWord = wordsCollection.get(randomWordId).getString("word");
             gameWord = gameWord.toUpperCase();
-//            gameWord = "SOFIA";
 
+            //generate the string, viewed by the user
             String word = generateVisibleGameWord();
             TextView gameWordView = (TextView) findViewById(R.id.gameWordView);
             gameWordView.setText(word);
@@ -88,14 +98,13 @@ public class GameActivity extends AppCompatActivity {
             TextView wordDescriptionView = (TextView) findViewById(R.id.wordDescriptionView);
             wordDescriptionView.setText(wordsCollection.get(randomWordId).getString("description"));
 
-//            processLetter("I");
-//            word = generateVisibleGameWord();
-
             Log.d("prepareGame", "dummy");
         }
         loadingDialog.dismiss();
     }
 
+    //if the letter is not yet guessed - replace it with " _ "
+    //if the random word consists of more than one real word - show the first and last char for all words
     private String generateVisibleGameWord() {
         StringBuilder visible = new StringBuilder();
         String[] gameWords = gameWord.split(" ");
@@ -115,6 +124,7 @@ public class GameActivity extends AppCompatActivity {
         return visible.toString();
     }
 
+    //pick a random category from the Category enum and fetch all words from that category
     private void populateRandomCategory() {
 
         Category randomCategory = Category.getRandomCategory();
@@ -132,19 +142,19 @@ public class GameActivity extends AppCompatActivity {
     private final BaasHandler<List<BaasDocument>> getWordsHandler = new BaasHandler<List<BaasDocument>>() {
         @Override
         public void handle(BaasResult<List<BaasDocument>> res) {
+            //populate the words and continue with game initiation
             if (res.isSuccess()) {
                 Log.d("Baasboxdocs", "success");
                 wordsCollection = res.value();
                 prepareGame();
-//                for (BaasDocument doc : res.value()) {
-//                    Log.d("Baasboxdocs", "Doc: " + doc);
-//                }
             } else {
+                //TODO: check if proper error handling is required here
                 Log.e("Baasboxdocs", "Error", res.error());
             }
         }
     };
 
+    //when the user tries to guess a letter, process it here;
     private void processLetter(String inputStr) {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
         inputStr = inputStr.toUpperCase();
@@ -181,6 +191,7 @@ public class GameActivity extends AppCompatActivity {
         //TODO: show error messages if any
     }
 
+    //when the user attempts a complete guess, process it here
     private void processGuess(String inputStr) {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
         if (gameWord.equals(inputStr)) {
@@ -191,6 +202,7 @@ public class GameActivity extends AppCompatActivity {
         loadingDialog.dismiss();
     }
 
+    //when the game is over, process the result here
     private void endGame(boolean isWinning) {
         //TODO: end game
     }
@@ -217,6 +229,7 @@ public class GameActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    //a short script to repopulate the DB when necesssary (ex. after a db reset)
     private void populateDB() {
         List<BaasDocument> words = new ArrayList<BaasDocument>();
 
