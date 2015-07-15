@@ -271,7 +271,7 @@ public class GameActivity extends AppCompatActivity {
     private void processGuess(String inputStr) {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
         if (inputStr.length() < 5 ) {
-            //TODO: invalid guess; try again
+            showSnackbar("Invalid input:", "EMPTY", Color.RED);
         } else {
             inputStr = inputStr.toUpperCase();
             wordGuessMade = true;
@@ -324,7 +324,7 @@ public class GameActivity extends AppCompatActivity {
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
-                        //TODO: start new game
+                        recreate();
                     }
                 });
         alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "SHARE",
