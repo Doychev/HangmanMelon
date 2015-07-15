@@ -1,5 +1,6 @@
 package com.example.martindoychev.hangmanmelon;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -33,6 +34,7 @@ at the beginning of the login process and end it if an error occurs or at the en
 public class MainActivity extends AppCompatActivity {
 
     private CallbackManager facebookCallbackManager;
+    private ProgressDialog loadingDialog;
 
     private BaasDocument fbUser;
 
@@ -63,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
 //
 //        }
 
+        loadingDialog = ProgressDialog.show(MainActivity.this, "", "Loading. Please wait...", true);
         FacebookSdk.sdkInitialize(this);
         facebookCallbackManager = CallbackManager.Factory.create();
         setContentView(R.layout.activity_main);
@@ -77,6 +80,8 @@ public class MainActivity extends AppCompatActivity {
         //if logged in - redirect to the game
         if (AccessToken.getCurrentAccessToken()!=null) {
             signInBaasBox();
+        } else {
+            loadingDialog.dismiss();
         }
 
         //register the callback on the Facebook loginButton
@@ -84,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         loginButton.registerCallback(facebookCallbackManager, new FacebookCallback<LoginResult>() {
             @Override
             public void onSuccess(LoginResult loginResult) {
+                loadingDialog = ProgressDialog.show(MainActivity.this, "", "Loading. Please wait...", true);
                 Log.i("facebook-login", "success");
                 //if Facebook login is successful, proceed with BaasBox login
                 signInBaasBox();
@@ -100,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
                 //TODO: check if proper error handling is required here
             }
         });
-
     }
 
     @Override
@@ -156,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
                             if (userExists) {
-                                openGameActivity();
+                                openDashboardActivity();
                             } else {
                                 saveFbUser();
                             }
@@ -182,7 +187,10 @@ public class MainActivity extends AppCompatActivity {
         BaasDocument user = new BaasDocument("facebookusers");
         user.put("uid", Profile.getCurrentProfile().getId());
         user.put("username", Profile.getCurrentProfile().getName());
-        user.put("history", "");
+        user.put("totalGames", 0);
+        user.put("wonGames", 0);
+        user.put("letterGuesses", 0);
+        user.put("wordGuesses", 0);
         user.save(new BaasHandler<BaasDocument>() {
             @Override
             public void handle(BaasResult<BaasDocument> doc) {
@@ -190,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         Log.i("baasboxsaveuser", "success");
                         fbUser = doc.get();
-                        openGameActivity();
+                        openDashboardActivity();
                     } catch (BaasException e) {
                         e.printStackTrace();
                         //TODO: check if proper error handling is required here
@@ -203,9 +211,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    //start the GameActivity, passing the user details in the intent
-    private void openGameActivity() {
-        Intent intent = new Intent(this, GameActivity.class);
+    //start the DashboardActivity, passing the user details in the intent
+    private void openDashboardActivity() {
+        if (loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
+        Intent intent = new Intent(this, DashboardActivity.class);
         intent.putExtra("fbUser", fbUser);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);

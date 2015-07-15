@@ -38,18 +38,9 @@
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/letterInput"
+        android:id="@+id/inputField"
         android:layout_alignBottom="@+id/letterButton"
         android:layout_toLeftOf="@+id/guessButton"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
-
-    <EditText
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/guessInput"
-        android:layout_toLeftOf="@+id/guessButton"
-        android:layout_alignBottom="@+id/guessButton"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
 
@@ -59,17 +50,15 @@
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:id="@+id/gameWordView"
         android:layout_centerVertical="true"
-        android:layout_toLeftOf="@+id/letterButton"
-        android:layout_toStartOf="@+id/letterButton" />
+        android:layout_centerHorizontal="true" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:id="@+id/wordDescriptionView"
-        android:layout_above="@+id/letterButton"
-        android:layout_toLeftOf="@+id/letterButton"
-        android:layout_toStartOf="@+id/letterButton" />
+        android:layout_below="@+id/gameWordView"
+        android:layout_centerHorizontal="true" />
 
     <ImageView
         android:layout_width="wrap_content"
@@ -78,4 +67,12 @@
         android:src="@drawable/errors0"
         android:layout_centerHorizontal="true"
         android:layout_above="@+id/gameWordView" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quit"
+        android:id="@+id/quitButton"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
 </RelativeLayout>

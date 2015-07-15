@@ -1,13 +1,20 @@
 package com.example.martindoychev.hangmanmelon;
 
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -18,8 +25,15 @@ import com.baasbox.android.BaasDocument;
 import com.baasbox.android.BaasHandler;
 import com.baasbox.android.BaasQuery;
 import com.baasbox.android.BaasResult;
+import com.baasbox.android.SaveMode;
 import com.baasbox.android.json.JsonObject;
 import com.baasbox.android.net.HttpRequest;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.share.Sharer;
+import com.facebook.share.model.ShareLinkContent;
+import com.facebook.share.widget.ShareDialog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,38 +45,80 @@ public class GameActivity extends AppCompatActivity {
 
     private List<BaasDocument> wordsCollection; //words from the db
     private String gameWord; //the random word, selected for the current game
-    private List<Character> unusedAlphabet, usedAlphabet; //the used and unused letters from the alphabet
+    private List<Character> unusedAlphabet; //the used and unused letters from the alphabet
     private int errorCount = 0; //wrong guesses made by the user
+    private int currentLetterGuesses = 0; //letter guesses made in the current game
+    private boolean wordGuessMade = false; //check if the player tried to guess the word
 
     private ProgressDialog loadingDialog;
     private BaasDocument fbUser; //user details
+
+    private CallbackManager callbackManager;
+    private ShareDialog shareDialog;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
+
+        loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
+
         fbUser = getIntent().getParcelableExtra("fbUser");
 
-        final EditText letterInput = (EditText) findViewById(R.id.letterInput);
-        final EditText guessInput = (EditText) findViewById(R.id.guessInput);
-
-        Button letterButton = (Button) findViewById(R.id.letterButton);
-        Button guessButton = (Button) findViewById(R.id.guessButton);
-
-
-        letterButton.setOnClickListener(new View.OnClickListener() {
+        callbackManager = CallbackManager.Factory.create();
+        shareDialog = new ShareDialog(this);
+        shareDialog.registerCallback(callbackManager, new FacebookCallback<Sharer.Result>() {
             @Override
-            public void onClick(View view) {
-                processLetter(letterInput.getText().toString());
-                letterInput.setText("");
+            public void onSuccess(Sharer.Result result) {
+                openDashboardActivity();
+            }
+
+            @Override
+            public void onCancel() {
+                openDashboardActivity();
+            }
+
+            @Override
+            public void onError(FacebookException e) {
+                //TODO: handle error
             }
         });
 
+        final EditText inputField = (EditText) findViewById(R.id.inputField);
+        final InputMethodManager inputManager = (InputMethodManager)
+                getSystemService(Context.INPUT_METHOD_SERVICE);
+
+
+        Button letterButton = (Button) findViewById(R.id.letterButton);
+        letterButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),
+                        InputMethodManager.HIDE_NOT_ALWAYS);
+
+                processLetter(inputField.getText().toString());
+                inputField.setText("");
+            }
+        });
+
+        Button guessButton = (Button) findViewById(R.id.guessButton);
         guessButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                processGuess(guessInput.getText().toString());
-                guessInput.setText("");
+                inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),
+                        InputMethodManager.HIDE_NOT_ALWAYS);
+
+                processGuess(inputField.getText().toString());
+                inputField.setText("");
+            }
+        });
+
+        Button quitButton = (Button) findViewById(R.id.quitButton);
+        quitButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                quitGame();
             }
         });
 
@@ -71,9 +127,13 @@ public class GameActivity extends AppCompatActivity {
         prepareGame();
     }
 
-    private void prepareGame() {
-        loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
+    @Override
+    protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        callbackManager.onActivityResult(requestCode, resultCode, data);
+    }
 
+    private void prepareGame() {
         //if the collection is not yet fetched, fetch it; otherwise - proceed with game initiation
         if (wordsCollection == null || wordsCollection.isEmpty()) {
             populateRandomCategory();
@@ -83,7 +143,6 @@ public class GameActivity extends AppCompatActivity {
             for (char c : alphabet) {
                 unusedAlphabet.add(c);
             }
-            usedAlphabet = new ArrayList<Character>();
 
             Random random = new Random();
             int randomWordId = Math.abs(random.nextInt(wordsCollection.size()));
@@ -99,8 +158,8 @@ public class GameActivity extends AppCompatActivity {
             wordDescriptionView.setText(wordsCollection.get(randomWordId).getString("description"));
 
             Log.d("prepareGame", "dummy");
+            loadingDialog.dismiss();
         }
-        loadingDialog.dismiss();
     }
 
     //if the letter is not yet guessed - replace it with " _ "
@@ -120,7 +179,7 @@ public class GameActivity extends AppCompatActivity {
             }
             visible.append(currentWord.charAt(currentWord.length() - 1) + "  ");
         }
-        visible.deleteCharAt(visible.length()-1);
+        visible.deleteCharAt(visible.length() - 1);
         return visible.toString();
     }
 
@@ -157,20 +216,27 @@ public class GameActivity extends AppCompatActivity {
     //when the user tries to guess a letter, process it here;
     private void processLetter(String inputStr) {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
+        if (inputStr.isEmpty()) {
+            showSnackbar("Invalid input:", "EMPTY", Color.RED);
+            loadingDialog.dismiss();
+            return;
+        }
         inputStr = inputStr.toUpperCase();
         char inputChar = inputStr.charAt(0);
         if (inputStr.length() > 1) {
-            //TODO: prepare error message, try again - 1 char
+            showSnackbar("Invalid input:", "MULTIPLE CHARS", Color.RED);
         } else if (!unusedAlphabet.contains(inputChar)) {
-            //TODO: prepare error message, try again - already used
+            showSnackbar("Invalid input:", "ALREADY USED", Color.RED);
         } else {
+            currentLetterGuesses++;
             int index = gameWord.indexOf(inputChar, 1);
             if (index > -1 && index < gameWord.length()-1) {
                 unusedAlphabet.remove(unusedAlphabet.indexOf(inputChar));
-                usedAlphabet.add(inputChar);
                 String word = generateVisibleGameWord();
                 TextView gameWordView = (TextView) findViewById(R.id.gameWordView);
                 gameWordView.setText(word);
+                showSnackbar("Your guess is:", "CORRECT", Color.GREEN);
+                loadingDialog.dismiss();
                 if (!word.contains(" _ ")) {
                     endGame(true);
                 }
@@ -180,31 +246,146 @@ public class GameActivity extends AppCompatActivity {
                 String idStr = "errors" + errorCount;
                 int id = getResources().getIdentifier("com.example.martindoychev.hangmanmelon:drawable/" + idStr, null, null);
                 errorsImageView.setImageResource(id);
+                showSnackbar("Your guess is wrong!", (MAX_ERROR_COUNT - errorCount) + " ATTEMPTS LEFT", Color.RED);
+                loadingDialog.dismiss();
                 if (errorCount >= MAX_ERROR_COUNT) {
                     endGame(false);
-                } else {
-                    //TODO: warn player about error
                 }
             }
         }
-        loadingDialog.dismiss();
-        //TODO: show error messages if any
+    }
+
+    private void showSnackbar(String message, String action, int color) {
+        Snackbar.make(findViewById(R.id.wordDescriptionView), message, Snackbar.LENGTH_SHORT).
+                setAction(action, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        //do nothing
+                    }
+                }).
+                setActionTextColor(color)
+                .show();
     }
 
     //when the user attempts a complete guess, process it here
     private void processGuess(String inputStr) {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
-        if (gameWord.equals(inputStr)) {
-            endGame(true);
+        if (inputStr.length() < 5 ) {
+            //TODO: invalid guess; try again
         } else {
-            endGame(false);
+            inputStr = inputStr.toUpperCase();
+            wordGuessMade = true;
+            if (gameWord.equals(inputStr)) {
+                endGame(true);
+            } else {
+                endGame(false);
+            }
         }
         loadingDialog.dismiss();
     }
 
     //when the game is over, process the result here
     private void endGame(boolean isWinning) {
-        //TODO: end game
+        loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
+        int totalGames = fbUser.getInt("totalGames") + 1;
+        int wonGames = fbUser.getInt("wonGames") + (isWinning ? 1 : 0);
+        int totalLetterGuesses = fbUser.getInt("letterGuesses") + currentLetterGuesses;
+        int wordGuesses = fbUser.getInt("wordGuesses") + (wordGuessMade ? 1 : 0);
+        fbUser.put("totalGames", totalGames).
+                put("wonGames", wonGames).
+                put("letterGuesses", totalLetterGuesses).
+                put("wordGuesses", wordGuesses);
+
+        fbUser.save(SaveMode.IGNORE_VERSION, new BaasHandler<BaasDocument>() {
+            @Override
+            public void handle(BaasResult<BaasDocument> res) {
+                if (res.isSuccess()) {
+                    Log.d("LOG", "Document saved " + res.value().getId());
+                } else {
+                    Log.e("LOG", "Error", res.error());
+                }
+            }
+        });
+        loadingDialog.dismiss();
+        showEndGameDialog(isWinning);
+    }
+
+    private void showEndGameDialog(boolean isWinning) {
+        AlertDialog alertDialog = new AlertDialog.Builder(GameActivity.this).create();
+        alertDialog.setTitle("Game over");
+        String message;
+        if (isWinning) {
+            message = "You won! Well done!";
+        } else {
+            message = "You lost! The word was: " + gameWord;
+        }
+        alertDialog.setMessage(message);
+        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "PLAY AGAIN",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        //TODO: start new game
+                    }
+                });
+        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "SHARE",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (ShareDialog.canShow(ShareLinkContent.class)) {
+                            ShareLinkContent linkContent = new ShareLinkContent.Builder()
+                                    .setContentTitle("Play Hangman!")
+                                    .setContentDescription(
+                                            "Join me in this interesting game!")
+                                    .setContentUrl(Uri.parse("http://developers.facebook.com/android"))
+                                    .build();
+
+                            shareDialog.show(linkContent);
+                        }
+                        dialog.dismiss();
+                    }
+                });
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "STATISTICS",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        openDashboardActivity();
+                    }
+                });
+        alertDialog.show();
+    }
+
+    private void quitGame() {
+        AlertDialog alertDialog = new AlertDialog.Builder(GameActivity.this).create();
+        alertDialog.setTitle("Quit game");
+        alertDialog.setMessage("Are you sure you want to quit? You will lose the current game!");
+        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "YES",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        endGame(false);
+                    }
+                });
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "CANCEL",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        //do nothing
+                    }
+                });
+        alertDialog.setIcon(android.R.drawable.ic_dialog_alert);
+        alertDialog.show();
+    }
+
+    private void openDashboardActivity() {
+        Intent intent = new Intent(this, DashboardActivity.class);
+        intent.putExtra("fbUser", fbUser);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        quitGame();
     }
 
     @Override
