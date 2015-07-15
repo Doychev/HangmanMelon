@@ -31,9 +31,13 @@ import com.baasbox.android.net.HttpRequest;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
+import com.facebook.appevents.AppEventsLogger;
 import com.facebook.share.Sharer;
 import com.facebook.share.model.ShareLinkContent;
 import com.facebook.share.widget.ShareDialog;
+import com.google.android.gms.analytics.GoogleAnalytics;
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +46,8 @@ import java.util.Random;
 public class GameActivity extends AppCompatActivity {
 
     private static final int MAX_ERROR_COUNT = 5;
+
+    private Tracker mTracker;
 
     private List<BaasDocument> wordsCollection; //words from the db
     private String gameWord; //the random word, selected for the current game
@@ -60,6 +66,10 @@ public class GameActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        GoogleAnalytics analytics = GoogleAnalytics.getInstance(this);
+        mTracker = analytics.newTracker(R.xml.global_tracker);
+
         setContentView(R.layout.activity_game);
 
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
@@ -125,6 +135,16 @@ public class GameActivity extends AppCompatActivity {
         //uncomment the line below to populate the db with the collection words and the documents for it
         //populateDB();
         prepareGame();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        String name = "GameActivity";
+        Log.i("analytics", "Setting screen name: " + name);
+        mTracker.setScreenName(name);
+        mTracker.send(new HitBuilders.ScreenViewBuilder().build());
     }
 
     @Override
@@ -231,9 +251,9 @@ public class GameActivity extends AppCompatActivity {
             loadingDialog.dismiss();
         } else {
             currentLetterGuesses++;
+            unusedAlphabet.remove(unusedAlphabet.indexOf(inputChar));
             int index = gameWord.indexOf(inputChar, 1);
             if (index > -1 && index < gameWord.length()-1) {
-                unusedAlphabet.remove(unusedAlphabet.indexOf(inputChar));
                 String word = generateVisibleGameWord();
                 TextView gameWordView = (TextView) findViewById(R.id.gameWordView);
                 gameWordView.setText(word);
@@ -315,12 +335,16 @@ public class GameActivity extends AppCompatActivity {
 
     private void showEndGameDialog(boolean isWinning) {
         AlertDialog alertDialog = new AlertDialog.Builder(GameActivity.this).create();
+        alertDialog.setCancelable(false);
         alertDialog.setTitle("Game over");
         String message;
+        final String shareTitle;
         if (isWinning) {
             message = "You won! Well done!";
+            shareTitle = "I guessed the word " + gameWord + "!";
         } else {
             message = "You lost! The word was: " + gameWord;
+            shareTitle = "I couldn't guess the word " + gameWord + "!";
         }
         alertDialog.setMessage(message);
         alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "PLAY AGAIN",
@@ -335,9 +359,9 @@ public class GameActivity extends AppCompatActivity {
                     public void onClick(DialogInterface dialog, int which) {
                         if (ShareDialog.canShow(ShareLinkContent.class)) {
                             ShareLinkContent linkContent = new ShareLinkContent.Builder()
-                                    .setContentTitle("Play Hangman!")
+                                    .setContentTitle(shareTitle)
                                     .setContentDescription(
-                                            "Join me in this interesting game!")
+                                            "Join me and play Hangman!")
                                     .setContentUrl(Uri.parse("http://developers.facebook.com/android"))
                                     .build();
 

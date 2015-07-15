@@ -1,5 +1,6 @@
 package com.example.martindoychev.hangmanmelon;
 
+import android.app.Application;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -23,6 +24,9 @@ import com.facebook.Profile;
 import com.facebook.appevents.AppEventsLogger;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
+import com.google.android.gms.analytics.GoogleAnalytics;
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
 
 import java.util.List;
 
@@ -32,6 +36,8 @@ at the beginning of the login process and end it if an error occurs or at the en
  */
 
 public class MainActivity extends AppCompatActivity {
+
+    private Tracker mTracker;
 
     private CallbackManager facebookCallbackManager;
     private ProgressDialog loadingDialog;
@@ -64,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
 //        } catch (NoSuchAlgorithmException e) {
 //
 //        }
+
+        GoogleAnalytics analytics = GoogleAnalytics.getInstance(this);
+        mTracker = analytics.newTracker(R.xml.global_tracker);
 
         loadingDialog = ProgressDialog.show(MainActivity.this, "", "Loading. Please wait...", true);
         FacebookSdk.sdkInitialize(this);
@@ -111,6 +120,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        String name = "MainActivity";
+        Log.i("analytics", "Setting screen name: " + name);
+        mTracker.setScreenName(name);
+        mTracker.send(new HitBuilders.ScreenViewBuilder().build());
 
         // Logs 'install' and 'app activate' App Events.
         AppEventsLogger.activateApp(this);

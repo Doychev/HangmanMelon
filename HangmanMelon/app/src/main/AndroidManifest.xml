@@ -3,6 +3,7 @@
     package="com.example.martindoychev.hangmanmelon" >
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <provider android:authorities="com.facebook.app.FacebookContentProvider1615367122084467"
         android:name="com.facebook.FacebookContentProvider"
