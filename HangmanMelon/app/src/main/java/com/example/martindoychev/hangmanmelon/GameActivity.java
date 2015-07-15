@@ -31,7 +31,6 @@ import com.baasbox.android.net.HttpRequest;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
-import com.facebook.appevents.AppEventsLogger;
 import com.facebook.share.Sharer;
 import com.facebook.share.model.ShareLinkContent;
 import com.facebook.share.widget.ShareDialog;
@@ -133,7 +132,7 @@ public class GameActivity extends AppCompatActivity {
         });
 
         //uncomment the line below to populate the db with the collection words and the documents for it
-        //populateDB();
+//        populateDB();
         prepareGame();
     }
 
@@ -478,7 +477,7 @@ public class GameActivity extends AppCompatActivity {
 
         BaasDocument word5 = new BaasDocument("words");
         word5.put("category", "Animals");
-        word5.put("word", "Big Eagle");
+        word5.put("word", "Bald Eagle");
         word5.put("description", "Animal, Bird");
         word5.put("wid", "2");
         words.add(word5);
