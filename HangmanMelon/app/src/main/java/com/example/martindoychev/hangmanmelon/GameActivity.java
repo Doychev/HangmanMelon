@@ -225,8 +225,10 @@ public class GameActivity extends AppCompatActivity {
         char inputChar = inputStr.charAt(0);
         if (inputStr.length() > 1) {
             showSnackbar("Invalid input:", "MULTIPLE CHARS", Color.RED);
+            loadingDialog.dismiss();
         } else if (!unusedAlphabet.contains(inputChar)) {
             showSnackbar("Invalid input:", "ALREADY USED", Color.RED);
+            loadingDialog.dismiss();
         } else {
             currentLetterGuesses++;
             int index = gameWord.indexOf(inputChar, 1);
@@ -271,17 +273,18 @@ public class GameActivity extends AppCompatActivity {
     private void processGuess(String inputStr) {
         loadingDialog = ProgressDialog.show(GameActivity.this, "", "Loading. Please wait...", true);
         if (inputStr.length() < 5 ) {
+            loadingDialog.dismiss();
             showSnackbar("Invalid input:", "EMPTY", Color.RED);
         } else {
             inputStr = inputStr.toUpperCase();
             wordGuessMade = true;
+            loadingDialog.dismiss();
             if (gameWord.equals(inputStr)) {
                 endGame(true);
             } else {
                 endGame(false);
             }
         }
-        loadingDialog.dismiss();
     }
 
     //when the game is over, process the result here
