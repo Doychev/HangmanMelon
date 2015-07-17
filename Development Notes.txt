@@ -29,3 +29,14 @@ Integrated the Facebook share buttons. Made a DashboardActivity to show statisti
 
 15/07/2015 18:37
 Tested and fixed several bugs. Added basic analytics.
+
+17/07/2015 12:35
+The database is currently running on my laptop. If at any point of time it is offline, contact me.
+
+17/07/2015 13:44
+Currently the database contains only 6 words. I'll fill it with more later.
+
+17/07/2015 13:45
+Currently the layouts of all the activities are not properly arranged. I don't consider this to be an important issue and also it is not completely relevant to my task. If necessary, I'll fix them.
+
+The current version can be considered complete.

@@ -1,14 +1,12 @@
 package com.example.martindoychev.hangmanmelon;
 
-import android.app.Application;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-
 import com.baasbox.android.BaasBox;
 import com.baasbox.android.BaasDocument;
 import com.baasbox.android.BaasException;
@@ -31,18 +29,14 @@ import com.google.android.gms.analytics.Tracker;
 import java.util.List;
 
 
-/*TODO: check if any progress dialog changes are needed; probably we have to start it
-at the beginning of the login process and end it if an error occurs or at the end
- */
-
 public class MainActivity extends AppCompatActivity {
 
-    private Tracker mTracker;
+    private Tracker mTracker; //google analytics tracker
 
     private CallbackManager facebookCallbackManager;
     private ProgressDialog loadingDialog;
 
-    private BaasDocument fbUser;
+    private BaasDocument fbUser; //the logged user
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -71,9 +65,11 @@ public class MainActivity extends AppCompatActivity {
 //
 //        }
 
+        //initiate the google analytics module
         GoogleAnalytics analytics = GoogleAnalytics.getInstance(this);
         mTracker = analytics.newTracker(R.xml.global_tracker);
 
+        //show the loading dialog while the connections are prepared
         loadingDialog = ProgressDialog.show(MainActivity.this, "", "Loading. Please wait...", true);
         FacebookSdk.sdkInitialize(this);
         facebookCallbackManager = CallbackManager.Factory.create();
@@ -81,12 +77,12 @@ public class MainActivity extends AppCompatActivity {
 
         //prepare the BaasBox connection
         BaasBox.builder(this).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN)
-                .setApiDomain("151.26.170.175")
+                .setApiDomain("151.26.162.165")
                 .setPort(9000)
                 .setAppCode("1234567890")
                 .init();
 
-        //if logged in - redirect to the game
+        //if logged in - redirect
         if (AccessToken.getCurrentAccessToken()!=null) {
             signInBaasBox();
         } else {
@@ -112,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(FacebookException e) {
                 Log.e("facebook-login", e.getMessage());
-                //TODO: check if proper error handling is required here
+                showErrorDialog();
             }
         });
     }
@@ -121,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
+        //analytics preparation
         String name = "MainActivity";
         Log.i("analytics", "Setting screen name: " + name);
         mTracker.setScreenName(name);
@@ -146,14 +143,33 @@ public class MainActivity extends AppCompatActivity {
         user.login(new BaasHandler<BaasUser>() {
             @Override
             public void handle(BaasResult<BaasUser> result) {
-                if (result.isFailed()){
+                if (result.isFailed()) {
                     Log.e("ERROR", "ERROR", result.error());
-                    //TODO: check if proper error handling is required here
+                    showErrorDialog();
                 } else {
                     completeLogin(result.isSuccess());
                 }
             }
         });
+    }
+
+    //if for any reason connection to Facebook or the DB fails, show an error dialog and close the app
+    private void showErrorDialog() {
+        AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+        alertDialog.setCancelable(false);
+        alertDialog.setTitle("Connection failed");
+        alertDialog.setMessage("Connection to the database failed. Please try again later. The application will now close.");
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "CLOSE",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+//                        if (loadingDialog.isShowing()) {
+//                            loadingDialog.dismiss();
+//                        }
+                        finish();
+                    }
+                });
+        alertDialog.show();
     }
 
     private void completeLogin(boolean success) {
@@ -181,18 +197,17 @@ public class MainActivity extends AppCompatActivity {
                             }
                         } catch (BaasException e) {
                             e.printStackTrace();
-                            //TODO: check if proper error handling is required here
+                            showErrorDialog();
                         }
                     } else {
                         Log.e("baasboxusers", "Error", res.error());
-                        //TODO: check if proper error handling is required here
+                        showErrorDialog();
                     }
                 }
             });
         } else {
             Log.e("baasboxlogin", "failed");
-            throw new RuntimeException();
-            //TODO: check if proper error handling is required here
+            showErrorDialog();
         }
     }
 
@@ -215,11 +230,11 @@ public class MainActivity extends AppCompatActivity {
                         openDashboardActivity();
                     } catch (BaasException e) {
                         e.printStackTrace();
-                        //TODO: check if proper error handling is required here
+                        showErrorDialog();
                     }
                 } else {
                     Log.e("baasboxsaveuser", "fail");
-                    //TODO: check if proper error handling is required here
+                    showErrorDialog();
                 }
             }
         });
@@ -235,27 +250,5 @@ public class MainActivity extends AppCompatActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 }

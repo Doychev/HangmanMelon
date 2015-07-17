@@ -11,8 +11,6 @@ import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -20,14 +18,11 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.baasbox.android.BaasBox;
 import com.baasbox.android.BaasDocument;
 import com.baasbox.android.BaasHandler;
 import com.baasbox.android.BaasQuery;
 import com.baasbox.android.BaasResult;
 import com.baasbox.android.SaveMode;
-import com.baasbox.android.json.JsonObject;
-import com.baasbox.android.net.HttpRequest;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
@@ -41,6 +36,7 @@ import com.google.android.gms.analytics.Tracker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
 
 public class GameActivity extends AppCompatActivity {
 
@@ -59,13 +55,14 @@ public class GameActivity extends AppCompatActivity {
     private BaasDocument fbUser; //user details
 
     private CallbackManager callbackManager;
-    private ShareDialog shareDialog;
+    private ShareDialog shareDialog; //facebook share dialog
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        //initiate the google analytics module
         GoogleAnalytics analytics = GoogleAnalytics.getInstance(this);
         mTracker = analytics.newTracker(R.xml.global_tracker);
 
@@ -90,7 +87,7 @@ public class GameActivity extends AppCompatActivity {
 
             @Override
             public void onError(FacebookException e) {
-                //TODO: handle error
+                showErrorDialog();
             }
         });
 
@@ -132,7 +129,7 @@ public class GameActivity extends AppCompatActivity {
         });
 
         //uncomment the line below to populate the db with the collection words and the documents for it
-//        populateDB();
+//        DatabaseWordsGenerator.populateDB();
         prepareGame();
     }
 
@@ -140,6 +137,7 @@ public class GameActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
+        //analytics preparation
         String name = "GameActivity";
         Log.i("analytics", "Setting screen name: " + name);
         mTracker.setScreenName(name);
@@ -226,7 +224,7 @@ public class GameActivity extends AppCompatActivity {
                 wordsCollection = res.value();
                 prepareGame();
             } else {
-                //TODO: check if proper error handling is required here
+                showErrorDialog();
                 Log.e("Baasboxdocs", "Error", res.error());
             }
         }
@@ -276,6 +274,7 @@ public class GameActivity extends AppCompatActivity {
         }
     }
 
+    //show a snackbar on the bottom of the screen for user information
     private void showSnackbar(String message, String action, int color) {
         Snackbar.make(findViewById(R.id.wordDescriptionView), message, Snackbar.LENGTH_SHORT).
                 setAction(action, new View.OnClickListener() {
@@ -332,6 +331,7 @@ public class GameActivity extends AppCompatActivity {
         showEndGameDialog(isWinning);
     }
 
+    //prepare and show the end game dialog
     private void showEndGameDialog(boolean isWinning) {
         AlertDialog alertDialog = new AlertDialog.Builder(GameActivity.this).create();
         alertDialog.setCancelable(false);
@@ -379,6 +379,7 @@ public class GameActivity extends AppCompatActivity {
         alertDialog.show();
     }
 
+    //when the user tries to exit the game or quit, warn him that he will lose it if he does
     private void quitGame() {
         AlertDialog alertDialog = new AlertDialog.Builder(GameActivity.this).create();
         alertDialog.setTitle("Quit game");
@@ -414,107 +415,22 @@ public class GameActivity extends AppCompatActivity {
         quitGame();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_game, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    //a short script to repopulate the DB when necesssary (ex. after a db reset)
-    private void populateDB() {
-        List<BaasDocument> words = new ArrayList<BaasDocument>();
-
-        BaasDocument word = new BaasDocument("words");
-        word.put("category", "Cities");
-        word.put("word", "Sofia");
-        word.put("description", "City in Bulgaria");
-        word.put("wid", "0");
-        words.add(word);
-
-        BaasDocument word1 = new BaasDocument("words");
-        word1.put("category", "Cities");
-        word1.put("word", "Milan");
-        word1.put("description", "City in Italy");
-        word1.put("wid", "1");
-        words.add(word1);
-
-        BaasDocument word2 = new BaasDocument("words");
-        word2.put("category", "Cities");
-        word2.put("word", "L'Aquila");
-        word2.put("description", "City in Italy");
-        word2.put("wid", "2");
-        words.add(word2);
-
-        BaasDocument word3 = new BaasDocument("words");
-        word3.put("category", "Animals");
-        word3.put("word", "Tiger");
-        word3.put("description", "Animal, Cats family");
-        word3.put("wid", "0");
-        words.add(word3);
-
-        BaasDocument word4 = new BaasDocument("words");
-        word4.put("category", "Animals");
-        word4.put("word", "Snake");
-        word4.put("description", "Animal, Reptile");
-        word4.put("wid", "1");
-        words.add(word4);
-
-        BaasDocument word5 = new BaasDocument("words");
-        word5.put("category", "Animals");
-        word5.put("word", "Bald Eagle");
-        word5.put("description", "Animal, Bird");
-        word5.put("wid", "2");
-        words.add(word5);
-
-        BaasBox client = BaasBox.getDefault();
-        String collectionName = "words";
-        client.rest(HttpRequest.POST, "admin/collection/" + collectionName, null, true,
-                new BaasHandler<JsonObject>() {
-                    @Override
-                    public void handle(BaasResult<JsonObject> res) {
-                        if (res.isSuccess()) {
-                            Log.d("LOG", "Collection created");
-                        } else {
-                            Log.e("LOG", "Error", res.error());
-                        }
+    //if for any reason the database quieries fail, show an error dialog and close the app
+    private void showErrorDialog() {
+        AlertDialog alertDialog = new AlertDialog.Builder(GameActivity.this).create();
+        alertDialog.setCancelable(false);
+        alertDialog.setTitle("Connection failed");
+        alertDialog.setMessage("Connection to the database failed. Please try again later. The application will now close.");
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "CLOSE",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+//                        if (loadingDialog.isShowing()) {
+//                            loadingDialog.dismiss();
+//                        }
+                        finish();
                     }
                 });
-
-        saveWords(words, 0);
-    }
-
-    private void saveWords(final List<BaasDocument> words, final int index) {
-        BaasHandler<BaasDocument> saveWordsHandler =
-                new BaasHandler<BaasDocument>() {
-                    @Override
-                    public void handle(BaasResult<BaasDocument> doc) {
-                        if (doc.isSuccess()) {
-                            saveWords(words, index + 1);
-                            Log.d("Baasboxdocs", "success");
-                        } else {
-                            Log.d("Baasboxdocs", "fail");
-                        }
-                    }
-                };
-
-        if (index < words.size()) {
-            words.get(index).save(saveWordsHandler);
-        }
+        alertDialog.show();
     }
 }
