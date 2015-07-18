@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
 
         //prepare the BaasBox connection
         BaasBox.builder(this).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN)
-                .setApiDomain("151.26.162.165")
+                .setApiDomain("151.26.157.27")
                 .setPort(9000)
                 .setAppCode("1234567890")
                 .init();
